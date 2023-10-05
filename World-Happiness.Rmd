@@ -1,15 +1,29 @@
 ---
-title: "Final Lab - World Happiness"
-author: "Peyton Estep, Nancy Tran, Khoa Ho"
+title: "World Happiness"
+author: "Khoa Ho, Peyton Estep, Nancy Tran"
 date: "2023-04-11"
 output: 
   html_document:
     code_folding: hide
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+```{r include = FALSE}
+# Install packages
+
+options(repos = c(CRAN = "https://cloud.r-project.org/"))
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("ggthemes")
+install.packages("plotly")
+install.packages("gganimate")
+install.packages("maps")
+install.packages("GGally")
+```
+
+
 
 ```{r include = FALSE}
 # Loading packages 
