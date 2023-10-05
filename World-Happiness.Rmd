@@ -1,0 +1,439 @@
+---
+title: "Final Lab - World Happiness"
+author: "Peyton Estep, Nancy Tran, Khoa Ho"
+date: "2023-04-11"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include = FALSE}
+# Loading packages 
+
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(plotly)
+library(gganimate)
+library(maps)
+library(GGally)
+
+```
+
+```{r include = FALSE}
+world_happiness <- read.csv("WorldHappinessReport.csv")
+```
+
+```{r include = FALSE}
+# Changing Country Names
+
+world_happiness[world_happiness$Country.Name == "United States", "Country.Name"] = "USA"
+
+world_happiness[world_happiness$Country.Name == "Turkiye", "Country.Name"] = "Turkey"
+
+```
+
+# Introduction
+
+  In this lab, we will be analyzing the world happiness dataset, which includes information about happiness scores and variables that may impact those happiness scores, for each country and for each year from 2005 to 2022. 
+  
+  Within this analysis, we will be answering many questions, such as:
+  
+  1. What are the five happiest and least happiest countries? How have their happiness scores changed over time? What are the differences in which variables impact their happiness scores the most?
+  
+  2. What variables impact the most influential countries in the world? How have their happiness scores changed over time? 
+  
+  3. Are there any geographical trends regarding happiness scores? If so, why might that be?
+  
+  4. Which variable(s) impact the entire world as a whole the most?
+  
+  5. What can be done to improve happiness scores?
+  
+  Before we dive into this analysis, we will discuss information about the dataset itself, how world happiness is defined and calculated, and any ethical considerations to be wary of within this analysis.
+  
+### The Dataset
+
+  First, we will begin by discussing the dataset, what variables it contains, and what those variables mean.
+  
+  The World Happiness Report dataset, retrieved from Kaggle (World Happiness Report, 2005-Present | Kaggle), contains data on happiness scores and rankings from the years 2005 to 2022. The data is sourced from the Gallup World Poll, which surveys people in over 150 countries on their overall life satisfaction, as well as other factors related to well-being.
+
+  The dataset includes variables such as:
+  
+- Country: The name of the country being surveyed.
+
+- Year: The year in which the survey was conducted.
+
+- Life Ladder: A score based on the respondent's overall life satisfaction, ranging from 0 to 10.
+
+- Log GDP per capita: The natural logarithm of the country's Gross Domestic Product per capita, adjusted for purchasing power parity.
+
+- Social support: The national average of the binary responses (0 = no, 1 = yes) to the Gallup World Poll (GWP) question “If you were in trouble, do you have relatives or friends you can count on to help you whenever you need them, or not?”
+
+- Healthy life expectancy at birth: The number of years a newborn can expect to live in good health, taking into account morbidity and mortality rates.
+
+- Freedom to make life choices: The national average of binary responses to the GWP question “Are you satisfied or dissatisfied with your freedom to choose what you do with your life?”
+
+- Generosity: the residual of regressing the national average of GWP responses to the donation question “Have you donated money to a charity in the past month?” on log GDP per capita.
+
+- Perceptions of corruption: the average of binary answers to two GWP questions: “Is corruption widespread throughout the government or not?” and “Is corruption widespread within businesses or not?”
+
+  The variables offered in the dataset can be used to investigate the links between many elements, such as economic development, social support, and personal freedom, and how they affect both individuals' and a nations’ overall happiness.
+
+### What is World Happiness? How is it calculated?
+
+  World Happiness is not really "happiness" in the sense of emotional happiness. Rather, it is defined as life satisfaction. Happiness scores are based on the Cantril ladder method of survey. People are asked to rank their current lives on a scale from 0 to 10, with 0 being the worst life possible and 10 being the best life possible. These scores are averaged for each country, giving them their happiness score.
+
+  There are many factors that may impact happiness scores, such as GDP per capita, social support, life expectancy, freedom to make life choices, generosity, and perceptions of corruption. Using these variables, we can determine which ones impact happiness scores the most.
+
+### Ethical Considerations
+
+  Some ethical considerations regarding the World Happiness Report can include privacy and cultural sensitivity. Since the report covers a wide range of countries and cultures, it is important to approach the data with caution in respecting cultural differences in how well-being is defined and measured.
+
+  Representation and bias are also important as types of ethical consideration. The report aims to provide a comprehensive picture of well-being around the world. However, it is important to ensure that the voices and experiences of marginalized groups of people are reasonably included in the data and its analysis as well. There might be, however, forms of biases such as selection criteria of variables or response bias in surveying. Thus it is significant to be aware of the potential biases and take steps to minimize their impact. 
+  
+  Additionally, there are a few stakeholders in this analysis. These include people in the countries that are included in this dataset, as well as the governments of such countries. The citizens of the countries in the dataset are stakeholders because people's responses to how they would rate themselves on the happiness scale may impact their view on their country. Governments in those countries are stakeholders because the data, particularly the average happiness score and the perceptions of government variable, may make them look bad.
+  
+  Another ethical consideration is that we did not include every variable in the dataset. We left out positive affect (Positive.Affect), negative affect (Negative.Affect), and confidence in national government (Confidence.In.National.Government). Our reasoning for this is that, at least regarding the positive and negative affect variables (which both measure mood and people's emotions), we wanted to try to avoid using emotional-related variables. We wanted to focus our analysis on variables that are not dependent on people's emotional well-being, but more on government practices and life satisfaction. People's moods are susceptible to major changes in a short amount of time, and people may have been in a better or worse mood than normal at the time they took the survey, especially since the survey only asks about the previous day. Regarding the confidence in national government variable, for some reason, there is no information in the dataset description about this variable, so we were unsure of what exactly it was representing or how it was calculated, so we felt it was best to not include it in the analysis.
+  
+  With that said, we will start our analysis with exploring the trends in happiness scores for different groups of countries.
+
+# Differences in World Happiness
+
+  In this part of the analysis, we will be discovering and explaining several trends in happiness scores for several different groups of countries.
+  
+  First, we will look at is the differences between the happiest and least happiest countries in 2022 (according to worldhappiness.report). Are there differences in the variables that have the greatest impact on these countries happiness scores? 
+  
+  Then, we will take a look at the most influential countries (defined by their power in the economy), and which variables impact their happiness scores the most. Is it the same as the happiest and least happiest countries? Does being labeled as "influential" indicate a higher happiness score?
+
+```{r}
+# (1) Creating a lineplot showing the change in happiness scores for several countries over time
+
+top_least_5 <- world_happiness %>%
+  filter(Country.Name == "Finland" | Country.Name == "Denmark" | Country.Name == "Iceland" | Country.Name == "Switzerland" | Country.Name == "Netherlands" | Country.Name == "Afghanistan" | Country.Name == "Lebanon" | Country.Name == "Zimbabwe" | Country.Name == "Rwanda" | Country.Name == "Botswana")
+  
+ggplot(top_least_5, aes(Year, Life.Ladder, group = Country.Name)) +
+  geom_line(aes(col = Country.Name)) +
+  labs(x = "Year", y = "Happiness Score (Life.Ladder)", caption = "Lineplot showing the happiness scores of the five happiest \nand five unhappiest countries over time (2005 to 2022)", title = "Lineplot of Happiness Scores Over Time") +
+  scale_color_manual(values = c("red", "orange", "gold", "darkgreen", "blue", "purple", "hotpink", "cyan3", "bisque4", "slategray")) +
+  theme_clean()
+
+```
+
+  This lineplot shows the happiness scores (Life.Ladder) of the five happiest and five unhappiest countries in 2022. 
+
+  The five happiest countries in 2022 were, according to worldhappiness.report, Finland, Denmark, Iceland, Switzerland, and the Netherlands. The lineplot provides further evidence to this claim, given that the lines for all five countries are high on the graph, indicating high happiness scores. All five lines stay in the 7 to 8 range for happiness scores from 2005 to 2022.
+
+  The five unhappiest countries in 2022 were, according to worldhappiness.report, Afghanistan, Lebanon, Zimbabwe, Rwanda, and Botswana. The lineplot provides further evidence for this claim, considering the fact that all five lines are in the 2 to 6 range for happiness scores from 2005 to 2022. A trend to notice is that the happiness scores for the five least happy countries have decreased over time, starting in the 3 to 6 range in 2005 and ending in the 0 to 4 range in 2022. 
+  
+  Now, we will do a linear regression to see which variables impact happiness scores of the five least happiest countries, then one for the five happiest countries.
+  
+```{r}
+# Linear regression for 5 least happiest countries.
+
+least_happy <- top_least_5 %>%
+  filter(Country.Name == "Afghanistan" | Country.Name == "Lebanon" | Country.Name == "Zimbabwe" | Country.Name == "Rwanda" | Country.Name == "Botswana")
+
+multi_reg_least <- lm(Life.Ladder ~ Log.GDP.Per.Capita + Social.Support + Healthy.Life.Expectancy.At.Birth + Freedom.To.Make.Life.Choices + Generosity + Perceptions.Of.Corruption, data = least_happy)
+
+summary(multi_reg_least)
+
+```
+
+  In this linear regression, I am trying to determine how much of an effect GDP per capita, social support, healthy life expectancy at birth, freedom to make life choices, generosity, and perceptions of corruption have on the five least happiest countries: Afghanistan, Lebanon, Zimbabwe, Rwanda, and Botswana.
+  
+  The minimum residual for this linear regression is -1.15607. This means that the smallest difference between the observed and predicted value is -1.15607. The maximum residual for this linear regression is 1.28846. This means that the largest difference between the observed and predicted value is 1.28846.
+  
+  The estimate intercept value for this linear regression is -.076515. This means that if all the factors were zero, we could expect the country's happiness score to be -0.76515. This value doesn't necessarily make sense, since happiness scores cannot be negative.
+  
+  The R-squared value for this linear regression is 0.5673. This means that about 56.73 percent of the happiness scores for the five least happiest countries is explained by the variables tested. 
+  
+  For GDP per capita (Log.GDP.Per.Capita), the estimate value is 0.36374. This means that for every increase in GDP per capita, the happiness score will increase by 0.36374. The standard error is 0.16922. This means that for each happiness score, the GDP per capita may vary by 0.16922. Using this value, we can create a 95 percent confidence interval, which is between 0.033761 and 0.693719. This means that the true slope, or estimate value, has a 95 percent chance of being between 0.033761 and 0.693719. The t-value for GDP per capita is 2.150. This is a fairly large t-value, indicating a relationship between happiness score and GDP per capita. The p-value is 0.0354. This p-value is less than 0.05, meaning that we are able to reject the null hypothesis. We are able to claim that there is a possible relationship between GDP per capita and happiness scores.
+  
+  For social support (Social.Support), the estimate value is 3.39326. This means that for every increase in the value for social support, the happiness score will increase by 3.39326. The standard error is 0.68709. This means that for each happiness score, social support may vary by 0.68709. Using this value, the 95 percent confidence interval is between 2.0534345 and 4.7330855. This means that the true estimate value, or slope, of the social support factor has a 95 percent chance of being between these two variables.The t-value is 4.939. This is a pretty large t-value, indicating a possible relationship between social support and happiness scores. The p-value is 6.10e-06. This is a very small p-value, meaning that we are able to reject the null hypothesis, and we are able to suggest a relationship between social support and happiness scores.
+  
+  For life expectancy (Healthy.Life.Expectancy.At.Birth), the estimate value is -0.01414. This means that for every increase in life expectancy for the country, the happiness score will drop by about 0.01414. The standard error is 0.01955. This means that for every happiness score, the life expectancy value can vary by 0.01955. Using this value, the 95 percent confidence interval would be between -0.0522625 and 0.0239825. This means that the true estimate value has a 95 percent chance of being between these two values. The t-value for social support is 0.723. This is a fairly small t-value, meaning that there may not be a relationship between life expectancy and happiness scores for the five least happiest countries. This assumption is backed up by the p-value, which is 0.4721. This p-value is not small enough to reject the null hypothesis, meaning that we cannot suggest a relationship between life expectancy and happiness scores for the five least happiest countries.
+  
+  For freedom to make life choices (Freedom.To.Make.Life.Choices), the estimate value is 0.31138. This means that for every increase in the value representing this factor, the happiness score can be expected to increase by 0.31138. The standard error is 0.82589. This means that for every happiness score, the freedom to make choices value may vary by 0.82589. Using this value, the 95 percent confidence interval would be between -1.2991055 and 1.9218655. The true estimate value, or slope, has a 95 percent chance of being between these two values. The t-value for this factor is 0.377. This a pretty small t-value, suggesting that there is not a relationship between freedom to make life choices and happiness scores. This is backed up by the p-value, which is 0.7074. This p-value is not small enough to reject the null hypothesis, so we cannot claim that there is a relationship between freedom to make life choices and happiness scores.
+  
+  For generosity (Generosity), the estimate value is 5.20710. This means that for every increase in the value representing generosity, we can expect the happiness score to increase by 5.20710. The standard error is 0.83134. This means that for every happiness score, the generosity value may vary by 0.83134. Using this value, the 95 percent confidence interval would be between 3.585987 and 6.828213. This means that the true estimate value has a 95 percent chance of being between these two values. The t-value for this factor is 6.264. This is a large t-value, indicating a relationship between generosity and happiness scores. This is backed up by the p-value, which is 3.76e-08. This p-value is small enough to reject the null hypothesis, and therefore suggest a relationship between generosity and happiness scores.
+  
+  For perceptions of corruption (Perceptions.Of.Corruption), the estimate value is 0.04824. This means that for every increase in the value representing perceptions of corruption, we can expect the happiness score to increase by 0.04824. The standard error is 0.61297. This means that for every happiness score, perceptions of corruption can vary by 0.61297. Using this value, the 95 percent confidence interval is between -1.1470515 and 1.2435315. This means that the true estimate value has a 95 percent chance of being between these two values. The t-value for this factor is 0.079. This is a very small t-value, indicating that there is likely not a relationship between perceptions of corruption and happiness scores for the five least happy countries. This assumption is backed up by the p-value, which is 0.9375. This p-value is not small enough to reject the null hypothesis, and therefore not small enough to indicate a relationship between perceptions of corruption and happiness scores.
+  
+  Overall, based on this linear regression, we can say that GDP per capita, social support, and generosity are the most influential factors for happiness scores for the five least happiest countries. Additionally, we can conclude that generosity has the greatest affect on the happiness scores of the least happiest countries, given the fact that the estimate value for this variable is the furthest from zero out of all the variables and the p-value is the smallest.
+  
+  Now, we will do a linear regression for the five happiest countries.
+
+```{r}
+# Linear regression for top 5 happiest countries.
+
+most_happy <- top_least_5 %>%
+  filter(Country.Name == "Finland" | Country.Name == "Denmark" | Country.Name == "Iceland" | Country.Name == "Switzerland" | Country.Name == "Netherlands")
+
+multi_reg_most <- lm(Life.Ladder ~ Log.GDP.Per.Capita + Social.Support + Healthy.Life.Expectancy.At.Birth + Freedom.To.Make.Life.Choices + Generosity + Perceptions.Of.Corruption, data = most_happy)
+
+summary(multi_reg_most)
+```
+
+  In this linear regression, I am trying to determine how much of an affect does GDP per capita, social support, life expectancy, freedom to make life choices, generosity, and perceptions of corruption have on the happiness scores of the five happiest countries: Finland, Denmark, Iceland, Switzerland, and the Netherlands.
+  
+  The minimum residual for this linear regression is -0.46521. This means that the smallest difference between the predicted and observed values is -0.46521. The maximum residual is 0.24035. This means that the largest difference between the predicted and observed values is 0.24035.
+  
+  The estimate intercept for this linear regression is 3.58249. This means that if all the factors were at 0, then we could expect the happiness score to be around 3.6. This value doesn't necessarily have any significance, given the context of this analysis. 
+  
+  The R-squared value for this linear regression is 0.544. This means that around 54.4 percent of the happiness scores for the five happiest countries can be explained by the variables tested in this linear regression.
+  
+  For GDP per capita (Log.GDP.Per.Capita), the estimate value is 0.04380. This means that for every increase in GDP per capita, the happiness score will increase by 0.04380. The standard error value is 0.20251. This means that for each happiness score, GDP per capita may vary by 0.20251. Using this value, the 95 percent confidence interval is between -0.3510945 and 0.4386945. This means that the true estimate value has a 95 percent chance of being between these two values. The t-value for this factor is 0.216. This a fairly small t-value, indicating that there may not be a relationship between GDP per capita and the happiness scores for the five happiest countries. The p-value is 0.82949. This is too big of a p-value to reject the null hypothesis. Therefore, we cannot assume that there is a relationship between GDP per capita and the happiness scores of the five happiest countries.
+  
+  For social support (Social.Support), the estimate value is 2.33252. This means that for every increase in social support, the happiness score can be expected to increase by 2.33252. The standard error is 1.06462. This means that for every happiness score, the social support value may vary by 1.06462. Using this value, the 95 percent confidence interval is between 0.256511 and 4.408529. This means that the true estimate value has a 95 percent chance of being between these two values. The t-value for this factor is 2.191. This is a pretty large t-value, indicating a possible relationship between social support and happiness scores. The p-value is 0.03235. This value is small enough to suggest a relationship between social support and happiness scores.
+  
+  For life expectancy (Healthy.Life.Expectancy.At.Birth), the estimate value is -0.02163. This means that for every increase in life expectancy, we can expect the happiness score to drop by 0.02163. The standard error value is 0.03123. This means that for every happiness score, life expectancy may vary by 0.03123. Using this value, the 95 percent confidence interval is between -0.0825285 and 0.0392685. This means that the true estimate value has a 95 percent chance of being somewhere between these two values. This t-value for this factor is -0.693. This is a fairly small t-value, suggesting no relationship between life expectancy and happiness scores. This suggestion is backed up by the p-value, which is 0.49123. This p-value is far too large to reject the null hypothesis. This means that there is no evidence of a relationship between life expectancy and the happiness scores of the top five happiest countries.
+  
+  For freedom to make life choices (Freedom.To.Make.Life.Choices), the estimate value is 3.13491. This means that for every increase in this value, we can expect the happiness score to increase by 3.13491. The standard error value is 0.93670. This means that for every happiness score, the freedom to make life choices value may vary by 0.93670. Using this value, the 95 percent confidence interval is between 1.308345 and 4.961475. This means that the true estimate value is between these two values. The t-value for this factor is 3.347. This is a large t-value, indicating that there may be a relationship between freedom to make life choices and happiness scores. The p-value is 0.00142, further indicating a relationship between this factor and happiness scores, since it is well below 0.05. 
+  
+  For generosity (Generosity), the estimate value is 0.10750. This means that for every increase in generosity, the happiness score can be expected to increase by 0.10750. The standard error for generosity is 0.18969. That means that for every happiness score, the value representing generosity can vary by 0.18969. Using this value, the 95 percent confidence interval can be calculated, which is between -0.2623955 and 0.4773955. So the true estimate value has a 95 percent chance of being between these two values. The t-value for generosity is 0.567. This is a pretty small t-value, indicating that there may be no relationship between generosity and happiness scores. Additionally, the p-value is way to large to reject the null hypothesis (0.57302), so we cannot claim that there may be a relationship between generosity and happiness scores.
+  
+  For perceptions of corruption (Perceptions.Of.Corruption), the estimate value is -0.35119. This means that for every increase in the value representing perceptions of corruption, the happiness score decreases by 0.35119. The standard error is 0.16712, meaning that for every happiness score, the perceptions of corruption value may vary by 0.16712. Using this value, the 95 percent confidence interval is between -0677074 and -0.025306. This means that the true estimate value is between these two values. The t-value for this factor is -2.101. This t-value is pretty large, meaning that there may be a relationship between perceptions of corruption and happiness scores. The p-value is 0.03981, meaning that there is indeed a possibility for a relationship between perceptions of corruption and happiness scores.
+  
+  Overall, it seems that the most influential variables for the happiness scores of the five happiest countries are social support, freedom to make life choices, and perceptions of corruption. Freedom to make life choices has the greatest affect on the happiness score, given the fact that it has the estimate value that is the furthest from zero out of all the variables and the p-value is the smallest.
+
+```{r}
+# (1) Creating a lineplot showing the happiness scores of the most influential countries in 2022 over time.
+
+select_countries2 <- world_happiness %>%
+  filter(Country.Name == "USA" | Country.Name == "China" | Country.Name == "Russia" | Country.Name == "Germany" | Country.Name == "United Kingdom" | Country.Name == "South Korea" | Country.Name == "France" | Country.Name == "Japan")
+  
+ggplot(select_countries2, aes(Year, Life.Ladder, group = Country.Name)) +
+  geom_line(aes(col = Country.Name)) +
+  labs(x = "Year", y = "Happiness Score (Life.Ladder)", caption = "Lineplot showing the happiness scores of \nthe most infleuntial countries in 2022 over time (from 2005 to 2022)", title = "Lineplot of Happiness Scores Over Time \nfor the Most Influential Countries") +
+  scale_color_manual(values = c("firebrick", "orange", "gold3", "darkgreen", "blue", "purple", "hotpink", "aquamarine")) +
+  theme_clean()
+
+```
+
+  This lineplot shows the happiness scores from 2005 to 2022 of the top eight most influential countries in 2022. These countries are, according to businessinsider.com, China, France, Germany, Japan, Russia, South Korea, United Kingdom, and the United States. 
+  
+  What makes a country be considered "influential" is its ability to control a large percentage the world's economy as well as its political flow. It is also defined by both a country's GDP per capita and growth in population.
+  
+  There are a few things to notice in this graph. One thing to notice is that all of these countries have a happiness score of at least four. This is interesting considering that he average happiness score is 5.48, as shown below. This could indicate that countries with greater GDP per capita and economic and political power have higher happiness scores.
+  
+```{r}
+mean(world_happiness$Life.Ladder)
+```
+
+  Another thing to notice is that as years pass, the scores for each of the countries have moved toward the six to seven range. We are not entirely sure why this is, but is it an interesting trend to take note of. Could laws have changed over time and resulted in this shift? 
+  
+  Next, we will do a linear regression to see which factors impact these countries' happiness scores the most.
+
+```{r}
+# Linear Regression for top eight most influential countries.
+
+multi_reg_top8 <- lm(Life.Ladder ~ Log.GDP.Per.Capita + Social.Support + Healthy.Life.Expectancy.At.Birth + Freedom.To.Make.Life.Choices + Generosity + Perceptions.Of.Corruption, data = select_countries2)
+
+summary(multi_reg_top8)
+
+```
+
+  In this linear regression, we are trying to see which factors in the dataset (GDP per capita, social support, life expectancy, freedom to make life choices, generosity, and perceptions of corruption) impact the happiness scores of the top 8 most influential countries in 2022, according to businessinsider.com. 
+  
+  For this linear regression model, the estimate intercept value is -7.353326. This means that if all the factors were zero, we can expect the happiness score to be -7.353326. This value does not make much sense given the context.
+  
+  The R-squared value for this linear regression is 0.8507. This means that about 85 percent of the happiness scores for the top eight most influential countries is explained by the variables in this linear regression. 
+  
+  For GDP per capita (Log.GDP.Per.Capita), the estimate value is 1.213930. This means that for every increase in GDP per capita, the happiness score will increase by 1.213930. The standard error value is 0.153311. This means that for every happiness score, the GDP per capita value can vary by 0.153311. Using this value, we can calculate the 95 percent confidence interval to be between 0.91497355 and 1.51288645. This means that the true estimate value has a 95 percent chance of being between these two numbers. The t-value for this factor is 7.918. This is a massive t-value, indicating a high likelihood that there is a relationship between GDP per capita and happiness scores. The p-value is 2.92e-12, which is small enough to reject the null hypothesis. This means that there is a possibility that there is a relationship between GDP per capita and the happiness scores for the top eight most influential countries.
+  
+  For social support (Social.Support), the estimate value is 2.057217. This means that for every increase in social support, the happiness score increases by 2.057217. The standard error is 0.810096, meaning that for every happiness score, the social support value can vary by 0.810096. Using this value, we can calculate that the 95 percent confidence interval is between 0.4775298 and 3.6369042. This means that the true estimate value has a 95 percent chance of being between these two numbers. The t-value for social support is 2.539. This is a fairly large t-value, indicating a possible relationship between social support and the happiness score of the top eight most influential countries. The p-value is 0.012596, which is small enough to reject the null hypothesis, meaning that there is likely a relationship between social support and happiness scores.
+  
+  For life expectancy (Healthy.Life.Expectancy.At.Birth), the estimate value is -0.016597. This means that as the life expectancy increases, the happiness score decreases by 0.016597. The standard error is 0.008959. This means that for every happiness score, the life expectancy can vary by 0.008959. Using this value, we can calculate that the true estimate value has a 95 percent chance of being between -0.03406705 and 0.00087305. The t-value for life expectancy is -1.853. This isn't necessarily a large t-value, meaning that there may not be a relationship between life expectancy and happiness scores. The p-value is 0.066798, which is too large to reject the null hypothesis, and therefore too large to claim that there is a relationship between life expectancy and happiness scores.
+  
+  For freedom to make life choices (Freedom.To.Make.Life.Choices), the estimate value is 0.755374. This means that for every increase in the freedom to make life choices value, the happiness score can be expected to increase by 0.755374. The standard error value is 0.571118. This means that for every happiness score, the freedom to make life choices value can vary by 0.571118. Using this value, we can calculate the 95 percent confidence interval to be between -0.3583061 and 1.8690541. This means that the true estimate value has a 95 percent chance of being between these two numbers. The t-value for this factor is 1.323, which isn't a large enough value to indicate a relationship between freedom to make life choices and happiness scores. This claim is backed up by the p-value, which is 0.188890. This p-value is not large enough to reject the null hypothesis and claim that there is a relationship between freedom to make life choices and the happiness score of the top eight most influential countries. 
+  
+  For generosity (Generosity), the estimate value is 0.623003. This means that as the generosity value increases, the happiness score will increase by 0.623003. The standard error is 0.179942. This means that for every happiness score, the generosity value can vary by 0.179942. Using value, we can determine that the true estimate value has a 95 percent chance of being between 0.2721161 and 0.9738899. The t-value for generosity is 3.462. This is a pretty large t-value, meaning that there is a possibility of a relationship between generosity and the happiness scores of the top eight most influential countries. 
+  
+  For perceptions of corruption (Perceptions.Of.Corruption), the estimate value is -0.655209. This means that for every increase in the perceptions of corruption value, the happiness score will decrease by 0.655209. The standard error value is 0.282818. This means that for every happiness score, the perceptions of corruption value can vary by 0.282818. Using this value, we can calculate that the true estimate value, or slope for perceptions of corruption, has a 95 percent chance of being between -1.2067041 and -0.1037139. The t-value for this factor is -2.317. This is a fairly large t-value, indicating a possible relationship between perceptions of corruption and happiness scores. The p-value is 0.022499, which is small enough to reject the null hypothesis, and we are able to say that there is likely a relationship between perceptions of corruption and the happiness scores of the top eight most influential countries.
+  
+  Overall, based on the t-values and p-values of the above variables, it seems that the most influential factors the impact the happiness scores of the top eight most influential countries GDP per capita, social support, generosity, and perceptions of corruption, with GDP per capita being the most statistically significant.
+  
+### So, what can we assume at this point?
+
+  Based on these linear regressions, there are a few things to make note of at this point.
+  
+  First, while each linear regression had different results, and showed that different countries (or groupings of countries in this case) had different factors that had the greatest impact on their happiness scores, social support was the one common factor that every linear regression showed as significant. Perhaps this may indicate that social support has a great impact on all countries' happiness scores. Of course, we cannot claim this as fact, since the previous linear regressions only tested eighteen countries total, but it is something to consider. 
+  
+  Second, for the top eight most influential countries, GDP per capita was the most statistically significant, given the fact that its p-value was the smallest out of all the factors. This is interesting considering that these countries are major superpowers in the world, meaning that they would all have large GDP per capita's in the first place. It seems that countries with a high GDP per capita have that variable as the most statistically significant variable.
+  
+  Next, we will take a look at geographical trends, and see if certain regions of the world have similar happiness scores.
+
+# Geographical Trends 
+
+  In this section, we will be discovering trends among different regions of the world. Is it possible that certain areas of the world have similar happiness scores? 
+  
+  In order to discover possible geographical trends, we will create a map showing the happiness scores of all the countries in the dataset for 2021. We used 2021 because a large percentage of the countries in the dataset have no data for 2022. Even so, not every country had data for 2021, so there are some empty spaces within the map.
+
+```{r warning = FALSE, message = FALSE}
+# (3) Creating a map showing happiness scores around the world in 2021
+
+library(ggplot2)
+library(plotly)
+library(gganimate)
+library(maps)
+library(tidyverse)
+
+map_2021 <- world_happiness %>%
+  filter(Year == 2021)
+
+world_map <- map_data("world")
+
+countries = world_map %>%
+  distinct(region) %>%
+  rowid_to_column()
+
+map <- ggplot(map_2021, aes(fill = Life.Ladder, map_id = Country.Name)) +
+  geom_map(map = world_map) +
+  expand_limits(x = world_map$long, y = world_map$lat) +
+  scale_fill_gradientn(colors = c("brown", "beige"), name = "Happiness Score") +
+  labs(title = "Life Ladder Comparison by Countries") +
+  theme_clean()
+
+map
+
+```
+
+  This map shows the happiness scores of several countries for the year of 2021. Lighter-colored countries mean that they have happier scores, while darker-colored countries have a lower happiness score.
+  
+  Based on this graph, there is one clear trend; the countries with the lowest happiness scores are in Africa, as shown by the dark brown. However, are the happiness scores of African countries actually that different, or are they only different for 2021? We can do a t-test comparing the mean happiness score for African countries from 2005 to 2022 to that of non-African countries.
+  
+```{r}
+
+# Creating one dataset with only african countries and one with every country except african countries.
+
+african_countries <- world_happiness %>%
+  filter(Regional.Indicator == "Middle East and North Africa" | Regional.Indicator == "Sub-Saharan Africa")
+
+but_african_countries <- world_happiness %>%
+  filter(Regional.Indicator != "Middle East and North Africa" & Regional.Indicator !=  "Sub-Saharan Africa")
+
+```
+
+
+```{r}
+
+# Doing a t-test comparing the mean of the happiness scores for african countries and every other country.
+
+t.test(african_countries$Life.Ladder, but_african_countries$Life.Ladder)
+
+```
+
+  This t-test compares the means of the happiness scores for African countries and non-African countries. For this t-test, the t-value is -25.324. This t-value is very far away from zero, indicating that the means are very different. Additionally, the p-value is extremely small (p < 2.2e-16), meaning that we are able to reject the null hypothesis, which states that the means are the same. We are able to conclude that the mean happiness score for African countries and the mean happiness score for all non-African countries is different. We are also given the sample estimate means for the two groups, African and non-African countries, which are 4.663849 and 5.819141 respectively.
+
+  Clearly, based on both the map and the t-test, African countries have lower happiness scores than all of the other countries in the dataset. Now, why might this be?
+
+  The causes of African countries' low happiness scores are a complicated combination of poverty, inequality, conflict, and bad government. Furthermore, the region's access to equality and political stability has been restricted by a number of devastating events that have long been a part of Africa. The disastrous effects that these elements can have on the well-being of people in Africa are demonstrated by actual events such as the Ebola outbreak, the conflict in South Sudan, and the water crisis in Cape Town. 
+
+  High unemployment rates, poor health outcomes, and a lack of access to healthcare and education are all common results of poverty in African nations. A key issue is inequality, when a small part of the population frequently controls the majority of the wealth. Long periods of conflict have affected several African nations, causing huge casualties, displaced populations, and economic instability. Additionally, social cohesiveness and trust, which are crucial components of happiness, can be damaged by conflict. Another element that affects Africa's low happiness rankings is poor governance. Many African nations struggle with corruption, weak institutions, and a lack of accountability, which can impede social development, economic growth, and public confidence in the government. Addressing these challenges will require a sustained effort to promote economic development, social inclusion, political stability, and good governance in the region.
+
+  Next, we will determine which variables impact the happiness scores of every country in the dataset the most, using a linear regression model.
+
+## The Whole World
+
+  In this part of the analysis, we will determine which variables effect the happiness scores of every country listed in the dataset the most. We will first do a linear regression with every variable, then do a multicollinearity test to discover if any of the variables are correlated with each other, and finally make our final conclusions.
+
+```{r}
+# (3) Linear Regression
+
+multi_reg <- lm(Life.Ladder ~ Log.GDP.Per.Capita + Social.Support + Healthy.Life.Expectancy.At.Birth + Freedom.To.Make.Life.Choices + Generosity + Perceptions.Of.Corruption, data = world_happiness)
+
+summary(multi_reg)
+
+```
+
+  This linear regression shows the impact of all factors (GDP per capita, social support, life expectancy, freedom to make life choices, generosity, and perception of corruption) have on the happiness scores for all countries in the world happiness dataset.
+  
+  Without going through every detail of this linear regression, it is clear that based on the p-values for all the variables (which are much less than 0.05), that all of the variables in our dataset are significant in regard to their impact on the happiness scores of all countries in the dataset. 
+  
+  What can we do with this information? 
+  
+  Well, we can do a multicollinearity test to see if any of the variables effect each other in any way, then use that information to determine which variables we should focus on.
+
+```{r warning = FALSE, message = FALSE}
+# Multicollinearity Test
+
+ggpairs(world_happiness, columns = c ("Log.GDP.Per.Capita", "Social.Support", "Healthy.Life.Expectancy.At.Birth", "Freedom.To.Make.Life.Choices", "Generosity", "Perceptions.Of.Corruption"))
+
+```
+
+  This multicollinearity test is meant to show if any of the variables have relationships with each other, which could impact the results of our study. Since the linear regression of the whole world showed that every variable is statistically significant in impacting the happiness scores of every country in the dataset, we want to see if any of the variables effect each other.
+  
+  Based on this linear regression, nearly all of the variables are correlated with each other, as indicated by the asterisks next to the correlation coefficients in the table. The only pairs that aren't correlated are life expectancy and generosity, and GDP per capita and generosity. 
+  
+  In general, it seems that most of the variables are related to each other, meaning that we are not able to narrow down the variables and determine which ones effect happiness scores the most.
+
+  Instead, we can use our earlier analyses to determine which variables may be the most statiscally significant.
+
+
+# Conclusions and Suggestions
+
+### The Results
+
+  While the linear regression for every country in the dataset and the multicollinearity test were not necessarily helpful in determining which variables impact the happiness scores of countries around the world the most, we can use the results from our earlier analyses to make conclusions and suggestions.
+  
+  In the first part of the analysis, we discovered which variables had the greatest impact for the five least happiest countries, the five happiest countries, and the eight most influential countries. For the five least happiest countries, GDP per capita, social support, and generosity were found to be the most influential factors for the countries' happiness scores, with generosity having the greatest impact. For the five happiest countries, social support, freedom to make life choices, and perceptions of corruption are the variables with the most impact on their happiness scores, with freedom to make life choices being the most influential out of the three. For the top eight most influential countries, GDP per capita, social support, generosity, and perceptions of corruption are the most statistically significant, with social support having the greatest impact of all. Overall, social support is the only common variable that was found to be statistically significant for every linear regression.
+  
+  With that, we can assume that social support might be the most important variable in determining the happiness scores of every country in the world. Of course, we cannot claim this for sure, since we do not have enough information to make that conclusion. However, with the information we do have, we can say that it is a strong possibility.
+  
+  Another conclusion we made is that Africa is home to some of the countries with the lowest happiness scores. This conclusion is based on both the map and the t-test, which showed a lower average happiness score for African countries versus non-African countries. 
+  
+  Now, what suggestions can we make with our results?
+  
+### Final Suggestions
+
+  With our assumption that social support is the leading factor effecting a country's happiness score, there are a few things that could be changed within a country to increase their happiness score.
+  
+  One thing that can be changed is that countries could encourage and focus on social cohesion. Governments could create environments that allow for people to meet and form friendships. Additionally, public conversations about diversity and social cohesion by government officials can assist in increasing social cohesion (christchurchattack.royalcommission.nz). Reducing social and economic inequality can also improve social support and cohesion (t20argentina.org). 
+  
+  On the personal level, people can improve social support by sustaining current relationships, volunteering, joining organizations, getting a pet, pursuing potential hobbies, and joining a support group.  
+  
+  In regard to the other variables in the dataset, there are a few suggestions to be made with the intent of raising a country's happiness score.
+  
+  In regard to GDP per capita, happiness scores can be improved by strengthening the productivity within a country. This can be done by advancing technologically and having an increase in capital goods. Also, investing in increasing income levels and improving the quality of different economic sectors would help countries leverage their ranking in the report.
+  
+  In regard to life expectancy, changes to this are less on the federal scale, and more on the personal scale. In general, in order to increase life expectancy, people have to eat healthy, get exercise, etc. Of course, governments could be involved by placing bans on extremely unhealthy foods, but even so, there is only so much the government can do regarding the life expectancy of their country.
+  
+  In regard to freedom to make life choices, there are many factors that may be effecting people's ability to make choices about their own life. If it's on the federal scale, speaking out and protests seem to be the best way to increase personal freedoms within a country. On the other hand, it may be people's parental figures that are hindering people's ability to make life choices. Either way, speaking out is a way to change this.
+  
+  For generosity, the answer seems clear: donate. However, not everyone has the funds for donating money, which is a whole problem in itself. Changes in wages and cost of living may help people be able to donate more often.
+  
+  Regarding perceptions of corruption, there are a few things that can be done. On the personal level, citizens can speak up about corrupt activities and aid in stopping those corrupt practices (ibac.vic.gov). On the federal level, governments can strengthen anti-corruptions regimes and improve international cooperation through partnerships (state.gov). 
+  
+  Other factors not explicitly described in the original variables are political stability, health and well-being and environmental quality. Governments should focus on establishing accountable and transparent policies to gain trust from their people, and to promote democratic governance. In terms of the people’s citizens, it might be the political instability that poses significant stress and anxiety. This proves the point that policies that support public health services and increase access to medical care would build trust for the policy makers and thus improve the happiness score of the countries. 
+  
+  Overall, there are many changes that could be made to increase a country's happiness score. However, these changes can be very difficult to implement, and may take years to show improvement. But, with both the government and the citizens working together, life satisfaction can improve.
+
+# Next Steps
+
+  Possible next steps if we were to continue this analysis, or if someone else were to continue this analysis, would be to do a bit of research on what people defined "best life possible" or "worst life possible" as. This would be a good next step because that may effect a country's happiness score. People can have similar lives, but one may define it as a terrible life, while another might be content. Since the life ladder/happiness score is dependent on people's opinions and perceptions on their own life compared to what they define as a good or bad life, differing definitions may impact a country's happiness score. That is something that would be interesting to look into.
+
+# Works Cited
+
+https://www.kaggle.com/datasets/usamabuttar/world-happiness-report-2005-present
+
+https://worldhappiness.report/ed/2022/happiness-benevolence-and-trust-during-covid-19-and-beyond/#ranking-of-happiness-2019-2021
+
+https://www.businessinsider.com/worlds-most-powerful-countries-2022-ranked-us-news-world-report-2022-12
+
+https://www.ibac.vic.gov.au/you-can-help-prevent-corruption#panel2
+
+https://www.state.gov/combating-corruption-and-promoting-good-governance/
+
+https://christchurchattack.royalcommission.nz/the-report/findings-and-recommendations/chapter-5/
+
+https://t20argentina.org/wp-content/uploads/2018/07/TF8-8-1.pdf
+
+https://socialwork.buffalo.edu/resources/self-care-starter-kit/additional-self-care-resources/developing-your-support-system.html
+
+https://www.psychologytoday.com/us/blog/lab-real-world/202106/6-tips-increasing-social-support
+
+
